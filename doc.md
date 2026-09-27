@@ -308,8 +308,11 @@ La **conversione esplicita** — il cast `(T) e` — è ammessa solo all'interno
 `(int) 'A'` dà `65`, `(char) 66` dà `'B'`. Il cast di una `string` o di un `bool` è un errore statico;
 per ottenere la rappresentazione testuale di un valore qualunque si usa `toStr`.
 
-Nelle operazioni aritmetiche il tipo del risultato è il **join** dei due operandi: `real` se almeno uno
-dei due è `real`, altrimenti `int`. Ne consegue che `5 / 2` vale `2`, mentre `(real) 5 / 2` vale `2.5`.
+Nelle operazioni `+`, `-`, `*`, `/` e `%` il tipo del risultato è il **join** dei due operandi:
+`real` se almeno uno dei due è `real`, altrimenti `int`. Ne consegue che `5 / 2` vale `2`, mentre
+`(real) 5 / 2` vale `2.5`. La potenza `^` restituisce sempre `real`, perché un esponente intero
+negativo può produrre una frazione (`2 ^ -2` vale `0.25`); `0` elevato a un esponente negativo è un
+errore a tempo d'esecuzione.
 
 Un esempio di regola di tipo, per la dichiarazione con inizializzatore, in cui si legge sia il
 controllo di sottotipaggio sia l'estensione dell'ambiente:
@@ -521,7 +524,7 @@ si fa fra `int`, e la divisione per zero è un controllo esplicito.
 **Cicli e ricorsione senza esaurire la pila.** `visitWhile` è un ciclo Java, non una chiamata
 ricorsiva: la profondità della pila non deve dipendere dal numero di iterazioni. Per la ricorsione
 *del programma interpretato*, che la pila la consuma per forza, un contatore `MAX_CALL_DEPTH` la
-interrompe a 1000 chiamate annidate trasformandola in un errore CPS catturabile, invece di lasciarla
+interrompe a 250 chiamate annidate trasformandola in un errore CPS catturabile, invece di lasciarla
 degenerare in uno `StackOverflowError` della JVM, che non lo sarebbe.
 
 **Errori di sintassi silenziosi.** Il listener di default di ANTLR stampa l'errore e prosegue con il
@@ -533,6 +536,7 @@ e parser e interrompe subito l'analisi.
 | File | Ruolo |
 |---|---|
 | `MainCPS.java` | orchestrazione delle quattro fasi, codici di uscita |
+| `TestAll.java` | runner degli smoke test in `programs/` |
 | `CPSTypeSystem.java` | controllo statico dei tipi e delle dichiarazioni |
 | `CPSInterpreter.java` | valutazione |
 | `env/Scope.java` | catena di scope, parametrica |
@@ -549,10 +553,16 @@ e parser e interrompe subito l'analisi.
 
 ## Programmi di Test
 
-I nove programmi in `programs/` si eseguono con
+I programmi dimostrativi e di regressione in `programs/` si eseguono singolarmente con
 
 ```
 java -jar target/CPS-1.0-SNAPSHOT-jar-with-dependencies.jar programs/<nome>.cps
+```
+
+Per eseguirli tutti e ottenere un codice diverso da zero al primo riepilogo con fallimenti:
+
+```
+java -cp target/CPS-1.0-SNAPSHOT-jar-with-dependencies.jar it.univr.cps.TestAll
 ```
 
 ### `hello.cps`
@@ -716,7 +726,7 @@ con rilancio, e ripresa dell'esecuzione dopo la gestione.
 2) catturato: indice 10 fuori dai limiti dell'array (lunghezza 3)
 3) catturato: dividi: il divisore non puo' essere zero
 4) catturato: dimensione di array negativa: -1
-5) catturato: ricorsione troppo profonda in 'infinita' (oltre 1000 chiamate annidate)
+5) catturato: ricorsione troppo profonda in 'infinita' (oltre 250 chiamate annidate)
 6) gestore interno: guasto nel blocco interno
 6) gestore esterno: rilanciato verso l'esterno
 7) il programma prosegue e termina regolarmente

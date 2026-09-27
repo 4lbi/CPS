@@ -61,7 +61,8 @@ public final class MainCPS {
         }
     }
 
-    private static void execute(CharStream input) {
+    /** Esegue le quattro fasi; visibile nel package per il runner degli smoke test. */
+    static void execute(CharStream input) {
         CPSLexer lexer = new CPSLexer(input);
         lexer.removeErrorListeners();
         lexer.addErrorListener(CPSErrorListener.INSTANCE);

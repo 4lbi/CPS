@@ -1,14 +1,14 @@
 package it.univr.cps;
 
 import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import it.univr.cps.env.FunctionTable;
-import it.univr.cps.error.CPSErrorListener;
 
 import java.io.File;
 import java.util.Arrays;
 
-public class TestAll {
+/** Runner manuale degli smoke test presenti in {@code programs/}. */
+public final class TestAll {
+
+    private TestAll() { }
 
     public static void main(String[] args) {
         File dir = new File("programs");
@@ -16,7 +16,7 @@ public class TestAll {
 
         if (files == null || files.length == 0) {
             System.err.println("Nessun file .cps trovato nella cartella programs!");
-            return;
+            System.exit(1);
         }
 
         // Ordina alfabeticamente i file di test
@@ -35,35 +35,15 @@ public class TestAll {
             System.out.println("--------------------------------------------------");
 
             try {
-                // 1. Analisi lessicale e sintattica (Lexer e Parser ANTLR)
-                CPSLexer lexer = new CPSLexer(CharStreams.fromPath(file.toPath()));
-                lexer.removeErrorListeners();
-                lexer.addErrorListener(CPSErrorListener.INSTANCE);
-
-                CPSParser parser = new CPSParser(new CommonTokenStream(lexer));
-                parser.removeErrorListeners();
-                parser.addErrorListener(CPSErrorListener.INSTANCE);
-
-                CPSParser.ProgramContext program = parser.program();
-
-                // 2. Raccolta funzioni e controllo statico dei tipi (Type System)
-                FunctionTable functions = FunctionTable.collect(program);
-                new CPSTypeSystem(functions).check(program);
-
-                // 3. Esecuzione del programma (Interprete Visitor)
-                new CPSInterpreter(functions).run(program);
+                MainCPS.execute(CharStreams.fromPath(file.toPath()));
 
                 System.out.println("\n[OK] " + file.getName() + " completato con successo.\n");
                 superati++;
 
-            } catch (Throwable t) {
-                // Cattura sia Exception che Error (incluso StackOverflowError)
-                System.out.println("\n[INFO/ERRORE INTERCETTATO]: " + t.getClass().getSimpleName() + " - " + t.getMessage() + "\n");
-                if (file.getName().equals("errori.cps")) {
-                    superati++; // In errori.cps l'errore o l'eccezione fa parte della suite di test
-                } else {
-                    falliti++;
-                }
+            } catch (Exception exception) {
+                System.out.println("\n[ERRORE]: " + exception.getClass().getSimpleName()
+                        + " - " + exception.getMessage() + "\n");
+                falliti++;
             }
         }
 
@@ -74,5 +54,8 @@ public class TestAll {
         System.out.println("Superati:         " + superati);
         System.out.println("Falliti:          " + falliti);
         System.out.println("==================================================");
+
+        if (falliti > 0)
+            System.exit(1);
     }
 }

@@ -11,8 +11,7 @@ eseguire il progetto.
 
 ## Requisiti
 
-- **JDK 25 o successivo**. Il `pom.xml` compila con `maven.compiler.source` e `maven.compiler.target`
-  impostati a `25`.
+- **JDK 25 o successivo**. Il `pom.xml` compila con `maven.compiler.release` impostato a `25`.
 - **Maven 3.9 o successivo**.
 - Accesso alla rete alla prima compilazione, per scaricare Maven e le dipendenze ANTLR. Dopo il
   download, Maven utilizza la propria cache locale.
@@ -111,6 +110,12 @@ for file in programs/*.cps; do
 done
 ```
 
+In alternativa, il runner restituisce un codice diverso da zero se uno degli smoke test fallisce:
+
+```bash
+java -cp target/CPS-1.0-SNAPSHOT-jar-with-dependencies.jar it.univr.cps.TestAll
+```
+
 ## Codici di uscita
 
 `MainCPS` usa codici diversi per distinguere i problemi:
@@ -192,6 +197,7 @@ Project/
     ├── antlr4/it/univr/cps/CPS.g4   grammatica ANTLR
     └── java/it/univr/cps/
         ├── MainCPS.java              punto d'ingresso
+        ├── TestAll.java              runner degli smoke test
         ├── CPSTypeSystem.java        controllo statico
         ├── CPSInterpreter.java       esecuzione
         ├── env/                       scope, celle e funzioni
@@ -215,8 +221,8 @@ java -jar target/CPS-1.0-SNAPSHOT-jar-with-dependencies.jar programs/hello.cps
 ```
 
 Per una verifica più ampia, eseguire anche i programmi presenti in `programs/`. Attualmente il
-progetto non contiene una suite di test in `src/test`; gli esempi sono quindi controlli funzionali
-manuali (smoke test).
+progetto non contiene test unitari in `src/test`; i programmi sono controlli funzionali (smoke test)
+automatizzati da `TestAll`, e alcuni verificano autonomamente le regressioni con `throw`.
 
 ## Contesto
 

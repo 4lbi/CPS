@@ -59,15 +59,19 @@ simpleCom : type ID dimensions* (ASSIGN exp)?                     # decl
           | NOP                                                   # nop
           ;
 
-closedCom : IF condition COLON com?
-            (ELSE IF condition COLON com?)*
-            (ELSE COLON com?)? END                                 # ifChain
+closedCom : IF condition COLON block
+            (ELSE IF condition COLON block)*
+            (ELSE COLON block)? END                                # ifChain
           | WHILE condition DO COLON com? END                      # while
-          | TRY COLON com? CATCH LPAR ID RPAR COLON com? END        # tryCatch
+          | TRY COLON block CATCH LPAR ID RPAR COLON block END      # tryCatch
           | FOR type ID IN exp RANGE exp DO COLON com? END          # forRange
           | FOR type ID IN exp DO COLON com? END                    # forEach
           | FOR LPAR type ID COMMA type ID RPAR IN exp DO COLON com? END # forDestructuring
           ;
+
+// Il wrapper conserva un nodo per ogni ramo anche quando il corpo e' vuoto. Senza di esso la lista
+// dei `com` perde la corrispondenza posizionale fra condizioni e rami.
+block : com? ;
 
 doWhileCom : DO COLON com? WHILE condition SEMICOLON                # doWhile
            ;

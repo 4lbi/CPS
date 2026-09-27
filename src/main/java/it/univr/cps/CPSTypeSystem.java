@@ -86,15 +86,11 @@ public final class CPSTypeSystem extends CPSBaseVisitor<Type> {
         if (ctx.funDecl() != null)
             return alwaysReturns(ctx.com());
 
-        boolean head = false;
+        boolean head;
         if (ctx.simpleCom() != null) head = alwaysReturns(ctx.simpleCom());
         else if (ctx.closedCom() != null) head = alwaysReturns(ctx.closedCom());
-        else if (ctx.doWhileCom() != null) head = false; // il do-while non garantisce l'uscita con return
+        else head = alwaysReturns(ctx.doWhileCom());
 
-        /*boolean head = ctx.simpleCom() != null
-                ? alwaysReturns(ctx.simpleCom())
-                : alwaysReturns(ctx.closedCom());
-        */
         return head || alwaysReturns(ctx.com());
     }
 
@@ -103,15 +99,21 @@ public final class CPSTypeSystem extends CPSBaseVisitor<Type> {
         return ctx instanceof CPSParser.ReturnContext || ctx instanceof CPSParser.ThrowContext;
     }
 
+    /** Il corpo di un do/while viene eseguito almeno una volta. */
+    private boolean alwaysReturns(CPSParser.DoWhileComContext ctx) {
+        return ctx instanceof CPSParser.DoWhileContext doWhile
+                && alwaysReturns(doWhile.com());
+    }
+
     private boolean alwaysReturns(CPSParser.ClosedComContext ctx) {
         return switch (ctx) {
             case CPSParser.IfChainContext chain ->
                     chain.ELSE().size() == chain.condition().size()
-                            && chain.com().size() == chain.condition().size() + 1
-                            && chain.com().stream().allMatch(this::alwaysReturns);
+                            && chain.block().stream()
+                                    .allMatch(block -> alwaysReturns(block.com()));
             case CPSParser.TryCatchContext tryCatch ->
-                    tryCatch.com().size() >= 2
-                            && alwaysReturns(tryCatch.com(0)) && alwaysReturns(tryCatch.com(1));
+                    alwaysReturns(tryCatch.block(0).com())
+                            && alwaysReturns(tryCatch.block(1).com());
             // un 'if' senza else e un 'while' possono non entrare mai nel corpo
             default -> false;
         };
@@ -272,26 +274,12 @@ public final class CPSTypeSystem extends CPSBaseVisitor<Type> {
 
     @Override
     public Type visitIfChain(CPSParser.IfChainContext ctx) {
-        for (CPSParser.ConditionContext cond : ctx.condition()) {
-            require(SimpleType.BOOL, cond.exp());
-        }
-        for (CPSParser.ComContext command : ctx.com()) {
-            visitComScoped(command);
-        }
+        for (CPSParser.ConditionContext condition : ctx.condition())
+            require(SimpleType.BOOL, condition.exp());
+        for (CPSParser.BlockContext block : ctx.block())
+            visitComScoped(block.com());
         return ComType.INSTANCE;
     }
-
-    /*@Override
-    public Type visitIfChain(CPSParser.IfChainContext ctx) {
-        for (int i = 0; i < ctx.condition().size(); i++) {
-            require(SimpleType.BOOL, ctx.condition(i).exp());
-            if (i < ctx.com().size()) visitComScoped(ctx.com(i));
-        }
-        if (ctx.ELSE().size() == ctx.condition().size()
-                && ctx.com().size() > ctx.condition().size())
-            visitComScoped(ctx.com(ctx.condition().size()));
-        return ComType.INSTANCE;
-    }*/
 
     @Override
     public Type visitWhile(CPSParser.WhileContext ctx) {
@@ -302,41 +290,16 @@ public final class CPSTypeSystem extends CPSBaseVisitor<Type> {
 
     @Override
     public Type visitTryCatch(CPSParser.TryCatchContext ctx) {
-        CPSParser.ComContext tryBody = null;
-        CPSParser.ComContext catchBody = null;
-        int catchTokenIndex = ctx.CATCH().getSymbol().getTokenIndex();
-
-        for (CPSParser.ComContext command : ctx.com()) {
-            if (command.getStart().getTokenIndex() < catchTokenIndex) {
-                tryBody = command;
-            } else {
-                catchBody = command;
-            }
-        }
-
-        if (tryBody != null) visitComScoped(tryBody);
+        visitComScoped(ctx.block(0).com());
 
         // la variabile del catch e' visibile solo nel blocco di gestione, e contiene il messaggio
         scope = scope.push();
         scope.declare(ctx.ID().getText(), SimpleType.STRING);
-        if (catchBody != null) visitComScoped(catchBody);
+        visitComScoped(ctx.block(1).com());
         scope = scope.pop();
 
         return ComType.INSTANCE;
     }
-
-    /*@Override
-    public Type visitTryCatch(CPSParser.TryCatchContext ctx) {
-        visitComScoped(ctx.com(0));
-
-        // la variabile del catch e' visibile solo nel blocco di gestione, e contiene il messaggio
-        scope = scope.push();
-        scope.declare(ctx.ID().getText(), SimpleType.STRING);
-        visitComScoped(ctx.com(1));
-        scope = scope.pop();
-
-        return ComType.INSTANCE;
-    }*/
 
     @Override
     public Type visitForEach(CPSParser.ForEachContext ctx) {
@@ -621,9 +584,9 @@ public final class CPSTypeSystem extends CPSBaseVisitor<Type> {
 
     @Override
     public Type visitPow(CPSParser.PowContext ctx) {
-        ExpType base = requireNumeric(ctx.exp(0));
-        ExpType exponent = requireNumeric(ctx.exp(1));
-        return TypeUtils.arithmeticJoin(base, exponent);
+        requireNumeric(ctx.exp(0));
+        requireNumeric(ctx.exp(1));
+        return SimpleType.REAL;
     }
 
     @Override
